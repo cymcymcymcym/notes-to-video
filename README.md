@@ -33,7 +33,8 @@ Feed it lecture notes, get an animated explainer video. **🔊 Turn sound on** �
 </picture>
 
 *Section 11.5 — Variational Auto-Encoder*
-*Andrew Ng & Tengyu Ma, Stanford University*
+*[CS229 Lecture Notes](https://cs229.stanford.edu/main_notes.pdf) — Andrew Ng & Tengyu Ma, Stanford University*
+*Used as demo input with attribution.*
 
 </td>
 <td>
@@ -124,6 +125,14 @@ skills/notes-to-video/
   SKILL.md                 # Claude Code skill definition
 ```
 
+## Acknowledgments
+
+- **[Manim Community](https://www.manim.community/)** — the animation engine this project is built on. Manim was originally created by [Grant Sanderson](https://www.3blue1brown.com/) (3Blue1Brown) and is now maintained by the Manim Community (MIT License).
+- **[3Blue1Brown](https://www.3blue1brown.com/)** — the visual style this project emulates. Grant Sanderson's videos set the standard for mathematical explainer animation.
+- **[CS229 Lecture Notes](https://cs229.stanford.edu/main_notes.pdf)** — Andrew Ng & Tengyu Ma, Stanford University. Used as source material for the VAE demo video (Section 11.5), with attribution.
+
+**Disclaimer:** This project is not affiliated with, endorsed by, or sponsored by 3Blue1Brown, Grant Sanderson, Stanford University, or the Manim Community. "3Blue1Brown" is used here as a descriptive reference to the visual style.
+
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.
