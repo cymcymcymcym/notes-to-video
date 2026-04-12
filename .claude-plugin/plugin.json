@@ -6,5 +6,18 @@
     "name": "cymcymcymcym",
     "url": "https://github.com/cymcymcymcym"
   },
-  "license": "MIT"
+  "homepage": "https://github.com/cymcymcymcym/notes-to-video",
+  "repository": "https://github.com/cymcymcymcym/notes-to-video",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "skill",
+    "manim",
+    "3blue1brown",
+    "video",
+    "animation",
+    "tts",
+    "education",
+    "explainer"
+  ]
 }
