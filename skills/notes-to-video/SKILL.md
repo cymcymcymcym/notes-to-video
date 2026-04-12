@@ -1,5 +1,5 @@
 ---
-name: notes-to-video
+name: make-video
 description: Turn notes (LaTeX, PDF, or plain text) into 3Blue1Brown-style animated videos using Manim + TTS + ffmpeg. Use when the user wants to create an explainer video.
 user-invocable: true
 argument-hint: <source-file-or-topic>
@@ -131,6 +131,40 @@ Rules:
 - Each segment ~60-100 words (~25-40 seconds of speech)
 - 3-5 segments per scene
 
+**Derivation scenes (CRITICAL):** When a scene shows a step-by-step equation derivation or proof:
+
+1. **Narration describes each transformation as it happens.** Write narration and animation together — each sentence corresponds to one visual step. Do NOT write general narration separately and try to fit equations afterwards.
+
+2. **Use continuous equation animation — NEVER FadeOut/FadeIn between steps.** Equations must morph smoothly from one form to the next, exactly like 3Blue1Brown does. Use:
+   - `TransformMatchingTex(old_eq, new_eq)` — morphs matching TeX parts, fades in/out differences. Both equations MUST share common TeX strings for smooth morphing.
+   - `ReplacementTransform(term_a, term_b)` — morphs one specific term into another.
+   - To **cancel** terms: animate them shrinking to zero (`term.animate.scale(0).set_opacity(0)`) or fading while the remaining terms close the gap.
+   - To **expand** a term: replace it with its expansion using `TransformMatchingTex`.
+   - To **rearrange**: animate terms moving to new positions with `.animate.move_to()`.
+
+3. **Structure equations for morphing.** Split MathTex into individually addressable parts so transforms work:
+   ```python
+   # BAD — one blob, can't morph individual terms
+   eq = MathTex(r"\log p(x) = \log \int Q(z) \frac{p(x,z)}{Q(z)} dz")
+   
+   # GOOD — each term is addressable
+   eq = MathTex(r"\log p(x)", r"=", r"\log \int", r"Q(z)", r"\frac{p(x,z)}{Q(z)}", r"\,dz")
+   ```
+
+4. **Keep the equation on screen throughout the derivation.** It lives in one place and transforms. The viewer watches one object evolve, not a slideshow of disconnected equations.
+
+Example for a derivation:
+```python
+"s3_seg1": (
+    "We start with log p of x. "
+    "{EXPAND} Now we introduce Q of z — "
+    "multiplying and dividing inside the integral. "
+    "{JENSEN} Applying Jensen's inequality, "
+    "the log moves inside as a lower bound. "
+    "{LABEL_ELBO} And this? That's the ELBO."
+),
+```
+
 ### Step 4: Build Source Files
 
 #### 4a. Manim Scenes — `videos/src/video{N}.py`
@@ -191,10 +225,11 @@ class Scene1_Example(Scene):
 
 **Anti-overlap rules (CRITICAL):**
 
-Overlapping text is the #1 quality problem. **Every scene must pass the validator with 0 issues.**
+Overlapping text is the #1 quality problem. **Every scene must pass the validator with 0 issues. Do NOT render until the validator reports 0 issues.** Intentional visual effects (like crossing out an equation) do not justify skipping validation — restructure the scene to avoid triggering the validator, or use visual approaches that don't generate false positives (e.g. fade the equation to low opacity, then show the replacement, rather than overlaying a Cross on top).
 
 - **`FadeOut(Group(*self.mobjects))` between EVERY concept change** — within AND between segments. Never accumulate unrelated elements.
-- **FadeOut before FadeIn** when reusing the same screen position
+- **For derivation scenes**: use `TransformMatchingTex` to morph equations in place. Do NOT stack equations vertically hoping they fit.
+- **FadeOut before FadeIn** when reusing the same screen position (except for `TransformMatchingTex` which handles this automatically)
 - **Text inside containers**: `CText()` width can be surprising. Circle radius ≥ 1.1 for single words. RoundedRectangle needs 0.4+ padding.
 - **Never route arrows through text** — use `.get_top()`, `.get_bottom()`, `.get_left()`, `.get_right()` for arrow endpoints
 - **Safe bounds**: x in [-6.5, 6.5], y in [-3.5, 3.5]. Reserve y > 3.0 for titles only.
