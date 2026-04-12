@@ -9,6 +9,10 @@
 
 Turn notes (LaTeX, PDF, or plain text) into animated explainer videos in the style popularized by 3Blue1Brown — using Manim, TTS, and ffmpeg.
 
+<p align="center">
+  <img src="docs/teaser.gif" alt="Change your notes into a 3Blue1Brown-style video" width="720">
+</p>
+
 A [Claude Code](https://claude.com/claude-code) skill that handles the full pipeline: content extraction, narration writing with cue markers, Manim scene generation with audio-video sync, validation, rendering, and composition.
 
 ## Demo
