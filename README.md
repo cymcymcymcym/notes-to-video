@@ -1,7 +1,9 @@
-# make-video
+# notes-to-video
 
+[![GitHub stars](https://img.shields.io/github/stars/cymcymcymcym/notes-to-video.svg?style=social)](https://github.com/cymcymcymcym/notes-to-video)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![npm](https://img.shields.io/npm/v/notes-to-video.svg)](https://www.npmjs.com/package/notes-to-video)
 [![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-blueviolet.svg)](https://claude.com/claude-code)
 
@@ -9,23 +11,22 @@ Turn notes (LaTeX, PDF, or plain text) into animated explainer videos in the sty
 
 A [Claude Code](https://claude.com/claude-code) skill that handles the full pipeline: content extraction, narration writing with cue markers, Manim scene generation with audio-video sync, validation, rendering, and composition.
 
-## Features
-
-- **Notes to video pipeline** — feed in LaTeX, PDF, or plain text notes, get animated explainer videos
-- **Audio-video sync** — cue-based system that synchronizes Manim animations to narration timestamps
-- **CText kerning fix** — workaround for Manim's broken Pango kerning ([manim #2844](https://github.com/ManimCommunity/manim/issues/2844))
-- **4 TTS backends** — Edge-TTS (free, default), MiniMax (best quality), Chatterbox (local + voice cloning), OpenAI
-- **Scene validator** — catches text overlaps, out-of-bounds elements, text overflow, and line-through-text issues before rendering
-- **Cross-platform** — Linux, macOS, Windows
+<!-- TODO: Add demo GIF/video here -->
 
 ## Install
 
+**npm (recommended):**
 ```bash
-/plugin marketplace add cymcymcymcym/make-video
-/plugin install make-video@make-video-marketplace
+npx notes-to-video
 ```
 
-Or manually: clone this repo and copy `skills/make-video/` to `~/.claude/skills/` and `video_utils/` to your project root.
+**Claude Code plugin:**
+```bash
+/plugin marketplace add cymcymcymcym/notes-to-video
+/plugin install notes-to-video@notes-to-video-marketplace
+```
+
+**Manual:** clone this repo, copy `skills/notes-to-video/` to `~/.claude/skills/` and `video_utils/` to your project root.
 
 ## Quick Start
 
@@ -36,7 +37,7 @@ Or manually: clone this repo and copy `skills/make-video/` to `~/.claude/skills/
 
 2. In Claude Code, run:
    ```
-   /make-video my_notes.tex
+   /notes-to-video my_notes.tex
    ```
 
 3. Claude will:
@@ -45,6 +46,15 @@ Or manually: clone this repo and copy `skills/make-video/` to `~/.claude/skills/
    - Generate Manim scenes synced to the narration
    - Validate all scenes for visual issues
    - Hand you the build command
+
+## Features
+
+- **Notes to video pipeline** — feed in LaTeX, PDF, or plain text notes, get animated explainer videos
+- **Audio-video sync** — cue-based system that synchronizes Manim animations to narration timestamps
+- **CText kerning fix** — workaround for Manim's broken Pango kerning ([manim #2844](https://github.com/ManimCommunity/manim/issues/2844))
+- **4 TTS backends** — Edge-TTS (free, default), MiniMax (best quality), Chatterbox (local + voice cloning), OpenAI
+- **Scene validator** — catches text overlaps, out-of-bounds elements, text overflow, and line-through-text issues before rendering
+- **Cross-platform** — Linux, macOS, Windows
 
 ## TTS Options
 
@@ -69,16 +79,16 @@ This produces smooth, naturally-paced videos where animations fire exactly when 
 ## Project Structure
 
 ```
-video_utils/              # Bundled library
-  manim_helpers.py        # CText, colors, sync helpers
-  tts_edge.py            # Edge-TTS (free, default)
-  tts_minimax.py         # MiniMax TTS (cloud)
-  tts_local.py           # Chatterbox + Whisper (local)
-  tts_openai.py          # OpenAI TTS (cloud)
-  validate_scenes.py     # Scene validator
+video_utils/                # Bundled library
+  manim_helpers.py          # CText, colors, sync helpers
+  tts_edge.py              # Edge-TTS (free, default)
+  tts_minimax.py           # MiniMax TTS (cloud)
+  tts_local.py             # Chatterbox + Whisper (local)
+  tts_openai.py            # OpenAI TTS (cloud)
+  validate_scenes.py       # Scene validator
 
-skills/make-video/
-  SKILL.md               # Claude Code skill definition
+skills/notes-to-video/
+  SKILL.md                 # Claude Code skill definition
 ```
 
 ## License

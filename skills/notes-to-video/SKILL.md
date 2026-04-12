@@ -1,5 +1,5 @@
 ---
-name: make-video
+name: notes-to-video
 description: Turn notes (LaTeX, PDF, or plain text) into 3Blue1Brown-style animated videos using Manim + TTS + ffmpeg. Use when the user wants to create an explainer video.
 user-invocable: true
 argument-hint: <source-file-or-topic>

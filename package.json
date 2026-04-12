@@ -1,0 +1,35 @@
+{
+  "name": "notes-to-video",
+  "version": "1.0.0",
+  "description": "Turn notes into animated explainer videos in the style popularized by 3Blue1Brown. Claude Code skill + Manim + TTS + ffmpeg.",
+  "keywords": [
+    "claude-code",
+    "claude-code-skill",
+    "manim",
+    "3blue1brown",
+    "video",
+    "animation",
+    "tts",
+    "education",
+    "explainer",
+    "latex",
+    "math"
+  ],
+  "homepage": "https://github.com/cymcymcymcym/notes-to-video",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cymcymcymcym/notes-to-video.git"
+  },
+  "author": "cymcymcymcym",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cymcymcymcym/notes-to-video/issues"
+  },
+  "files": [
+    "skills/",
+    "video_utils/",
+    ".claude-plugin/",
+    "README.md",
+    "LICENSE"
+  ]
+}
