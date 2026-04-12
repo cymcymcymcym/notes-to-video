@@ -11,7 +11,34 @@ Turn notes (LaTeX, PDF, or plain text) into animated explainer videos in the sty
 
 A [Claude Code](https://claude.com/claude-code) skill that handles the full pipeline: content extraction, narration writing with cue markers, Manim scene generation with audio-video sync, validation, rendering, and composition.
 
-<!-- TODO: Add demo GIF/video here -->
+## Demo
+
+Feed it lecture notes, get an animated explainer video:
+
+<table>
+<tr>
+<td width="40%" align="center"><strong>Input: CS229 Lecture Notes</strong></td>
+<td width="60%" align="center"><strong>Output: Animated Explainer</strong></td>
+</tr>
+<tr>
+<td>
+
+<img src="docs/cs229_vae_notes.png" alt="CS229 VAE lecture notes" width="100%">
+
+*Section 11.5 — Variational Auto-Encoder*
+*Andrew Ng & Tengyu Ma, Stanford University*
+
+</td>
+<td>
+
+<!-- Replace VIDEO_URL below after uploading: open issue #1, drag-drop vae_explainer.mp4, paste the generated <video> tag here -->
+<video src="https://github.com/cymcymcymcym/notes-to-video/releases/download/v1.0.0/vae_explainer.mp4" controls muted style="max-height:400px; width:100%;"></video>
+
+*3 min video, generated from notes in one command*
+
+</td>
+</tr>
+</table>
 
 ## Install
 
