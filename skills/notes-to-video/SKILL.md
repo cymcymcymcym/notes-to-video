@@ -135,23 +135,64 @@ Rules:
 
 1. **Narration describes each transformation as it happens.** Write narration and animation together — each sentence corresponds to one visual step. Do NOT write general narration separately and try to fit equations afterwards.
 
-2. **Use continuous equation animation — NEVER FadeOut/FadeIn between steps.** Equations must morph smoothly from one form to the next, exactly like 3Blue1Brown does. Use:
-   - `TransformMatchingTex(old_eq, new_eq)` — morphs matching TeX parts, fades in/out differences. Both equations MUST share common TeX strings for smooth morphing.
-   - `ReplacementTransform(term_a, term_b)` — morphs one specific term into another.
-   - To **cancel** terms: animate them shrinking to zero (`term.animate.scale(0).set_opacity(0)`) or fading while the remaining terms close the gap.
-   - To **expand** a term: replace it with its expansion using `TransformMatchingTex`.
-   - To **rearrange**: animate terms moving to new positions with `.animate.move_to()`.
+2. **Use per-submobject `ReplacementTransform` — NOT `TransformMatchingTex`.** `TransformMatchingTex` does global interpolation that makes everything float. The 3b1b technique is individual `ReplacementTransform` per term, so unchanged parts stay perfectly frozen:
 
-3. **Structure equations for morphing.** Split MathTex into individually addressable parts so transforms work:
    ```python
-   # BAD — one blob, can't morph individual terms
-   eq = MathTex(r"\log p(x) = \log \int Q(z) \frac{p(x,z)}{Q(z)} dz")
-   
-   # GOOD — each term is addressable
-   eq = MathTex(r"\log p(x)", r"=", r"\log \int", r"Q(z)", r"\frac{p(x,z)}{Q(z)}", r"\,dz")
+   # Morphing "=" into "≥" while everything else stays perfectly still:
+   eq1 = MathTex(r"\log p(x)", r"=", r"\mathbb{E}[\log p]")
+   eq2 = MathTex(r"\log p(x)", r"\geq", r"\mathbb{E}[\log p]")
+   eq2.shift(eq1[0].get_center() - eq2[0].get_center())  # align anchor
+   self.play(
+       ReplacementTransform(eq1[0], eq2[0]),  # frozen
+       ReplacementTransform(eq1[1], eq2[1]),  # "=" morphs to "≥"
+       ReplacementTransform(eq1[2], eq2[2]),  # frozen
+   )
    ```
 
-4. **Keep the equation on screen throughout the derivation.** It lives in one place and transforms. The viewer watches one object evolve, not a slideshow of disconnected equations.
+   **Adding new terms** — existing parts transform, new parts FadeIn:
+   ```python
+   self.play(
+       ReplacementTransform(eq1[0], eq2[0]),  # stays
+       FadeOut(eq1[1]),                        # old "+" disappears
+       FadeIn(eq2[1]),                         # new "-" appears
+       ReplacementTransform(eq1[2], eq2[3]),  # term moves to new position
+   )
+   ```
+
+   **Cancellation** — shrink/fade the term, then close the gap:
+   ```python
+   self.play(eq[2].animate.scale(0).set_opacity(0), run_time=0.8)
+   remaining = VGroup(eq[0], eq[1], eq[3])
+   self.play(remaining.animate.move_to(ORIGIN), run_time=0.5)
+   ```
+
+3. **Structure equations for per-term control.** Each meaningful part must be its own submobject:
+   ```python
+   # BAD — one blob, can't address terms individually
+   eq = MathTex(r"\log p(x) = \log \int Q(z) \frac{p(x,z)}{Q(z)} dz")
+   
+   # GOOD — each term addressable by index
+   eq = MathTex(r"\log p(x)", r"=", r"\log \int", r"Q(z)", r"\frac{p(x,z)}{Q(z)}", r"\,dz")
+   # eq[0] is "\log p(x)", eq[1] is "=", etc.
+   ```
+
+4. **Align before transforming.** Position eq2 relative to eq1 so frozen parts don't drift:
+   ```python
+   eq2.shift(eq1[0].get_center() - eq2[0].get_center())  # anchor on first term
+   ```
+
+5. **Keep the equation on screen throughout.** It lives in one place and transforms. The viewer watches one object evolve, not a slideshow.
+
+**3b1b scene design rules (follow these for authentic style):**
+
+- **Pacing**: `self.wait()` (1s) after every `self.play()`. Let the viewer absorb. Longer pauses (`wait(2)`) for complex ideas. Don't rush.
+- **Layout**: titles `to_edge(UP)`, main equations centered, diagrams center or lower region, working math `to_corner(UL)`. Use `set_max_width(config.frame_width - 1)` to prevent overflow.
+- **Font sizes**: hero equations 48-72, body math 42-48 (default), labels/notes 24-36. Much larger than typical.
+- **Minimal text**: almost never full sentences on screen. Key terms and equations only. The narration carries the explanation, not the screen text.
+- **Focus/defocus**: dim non-focus items with `.animate.set_fill(opacity=0.35)`, restore with `set_fill(opacity=1)`. This is how 3b1b directs attention.
+- **Color**: use semantic color mapping — each variable gets a consistent color via `tex_to_color_map`. Key palette: BLUE `#58C4DD`, YELLOW `#FFFF00`, TEAL `#5CD0B3`, RED `#FC6255`, PINK `#D147BD`, GREEN `#83C167`.
+- **Sequential reveals**: `LaggedStart(*anims, lag_ratio=0.1)` for dramatic builds, not simultaneous FadeIn.
+- **Curved arrows**: `Arrow(..., path_arc=-60*DEGREES)` for conceptual links between objects.
 
 Example for a derivation:
 ```python
