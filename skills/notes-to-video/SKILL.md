@@ -185,14 +185,46 @@ Rules:
 
 **3b1b scene design rules (follow these for authentic style):**
 
-- **Pacing**: `self.wait()` (1s) after every `self.play()`. Let the viewer absorb. Longer pauses (`wait(2)`) for complex ideas. Don't rush.
-- **Layout**: titles `to_edge(UP)`, main equations centered, diagrams center or lower region, working math `to_corner(UL)`. Use `set_max_width(config.frame_width - 1)` to prevent overflow.
-- **Font sizes**: hero equations 48-72, body math 42-48 (default), labels/notes 24-36. Much larger than typical.
-- **Minimal text**: almost never full sentences on screen. Key terms and equations only. The narration carries the explanation, not the screen text.
-- **Focus/defocus**: dim non-focus items with `.animate.set_fill(opacity=0.35)`, restore with `set_fill(opacity=1)`. This is how 3b1b directs attention.
-- **Color**: use semantic color mapping — each variable gets a consistent color via `tex_to_color_map`. Key palette: BLUE `#58C4DD`, YELLOW `#FFFF00`, TEAL `#5CD0B3`, RED `#FC6255`, PINK `#D147BD`, GREEN `#83C167`.
-- **Sequential reveals**: `LaggedStart(*anims, lag_ratio=0.1)` for dramatic builds, not simultaneous FadeIn.
-- **Curved arrows**: `Arrow(..., path_arc=-60*DEGREES)` for conceptual links between objects.
+**Pacing:**
+- `self.wait()` (1s) after every `self.play()`. Let the viewer absorb. Longer pauses (`wait(2)`) for complex ideas. Don't rush.
+
+**Layout:**
+- Titles `to_edge(UP)`, main equations centered, diagrams center or lower region.
+- **Corner parking**: after deriving a result, shrink it and send to `to_corner(UL)` to keep it visible while building the next idea. Do this constantly for key equations.
+- **Overflow protection**: call `.set_max_width(config.frame_width - 1)` on every wide equation to auto-shrink instead of overflowing.
+- **Split screen**: use `Line(UP, DOWN).set_height(config.frame_height)` to divide screen when comparing two views side by side.
+
+**Font sizes:**
+- Hero equations 48-72, body math 42-48 (default), labels/notes 24-36. Much larger than typical.
+
+**Minimal text:**
+- Almost never full sentences on screen. Key terms and equations only. The narration carries the explanation, not the screen text.
+
+**Focus/defocus (3b1b's #1 attention technique):**
+- Don't highlight the focus — **dim everything else**: `self.play(*[m.animate.set_fill(opacity=0.35) for m in others])`
+- Restore with `set_fill(opacity=1)`. This is how 3b1b directs the viewer's eye.
+- Use `Circumscribe(mobject)` for quick emphasis bursts.
+
+**Color:**
+- Use `tex_to_color_map` for automatic semantic coloring — but **beware short keys**: `"x"` will match the `x` inside `\max`, `\text`, etc. and corrupt the LaTeX. Only use it for unique multi-char strings. For single-letter variables, use manual `eq[i].set_color()` instead:
+  ```python
+  # SAFE — unique strings
+  eq = MathTex(..., tex_to_color_map={r"\geq": ACCENT, r"\mathbb{E}": GOLD})
+  
+  # DANGEROUS — "x" matches inside \max, \text{}, etc.
+  eq = MathTex(..., tex_to_color_map={"x": TEAL})  # DON'T — breaks LaTeX
+  eq[2].set_color(TEAL)  # DO — manual by index
+  ```
+- Key palette: BLUE `#58C4DD`, YELLOW `#FFFF00`, TEAL `#5CD0B3`, RED `#FC6255`, PINK `#D147BD`, GREEN `#83C167`.
+- **Color gradients** for related items: `color_gradient([TEAL, RED], 5)` for sequences like x, x', x''.
+
+**Animation patterns:**
+- **Sequential reveals**: `LaggedStartMap(FadeIn, group, shift=0.5*UP, lag_ratio=0.3)` — items appear one by one drifting upward. Never reveal a group all at once.
+- **Curved conceptual arrows**: `Arrow(start, end, path_arc=-60*DEGREES)` — never straight.
+- **`FadeTransform(A, B)`** — smoother than `ReplacementTransform` when morphing between different object types (diagram → equation). Cross-fades while morphing shape.
+- **`.space_out_submobjects(1.5)`** — spreads equation terms apart for emphasis, like zooming into the structure.
+- **Progressive curve drawing**: `pointwise_become_partial` with time-based updater for tracing graphs.
+- **Colored region backgrounds**: semi-transparent rectangles behind grouped items to visually associate them.
 
 Example for a derivation:
 ```python
