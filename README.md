@@ -31,8 +31,7 @@ Feed it lecture notes, get an animated explainer video:
 </td>
 <td>
 
-<!-- Replace VIDEO_URL below after uploading: open issue #1, drag-drop vae_explainer.mp4, paste the generated <video> tag here -->
-<video src="https://github.com/cymcymcymcym/notes-to-video/releases/download/v1.0.0/vae_explainer.mp4" controls muted style="max-height:400px; width:100%;"></video>
+<video src="https://github.com/user-attachments/assets/67273615-a9c3-4d09-bd39-005f426231a4" controls muted style="max-height:400px; width:100%;"></video>
 
 *3 min video, generated from notes in one command*
 
