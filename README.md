@@ -23,7 +23,10 @@ Feed it lecture notes, get an animated explainer video:
 <tr>
 <td>
 
-<img src="docs/cs229_vae_notes.png" alt="CS229 VAE lecture notes" width="100%">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/cs229_vae_notes_dark.png">
+  <img src="docs/cs229_vae_notes.png" alt="CS229 VAE lecture notes" width="100%">
+</picture>
 
 *Section 11.5 — Variational Auto-Encoder*
 *Andrew Ng & Tengyu Ma, Stanford University*
