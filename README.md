@@ -34,9 +34,9 @@ Feed it lecture notes, get an animated explainer video. **🔊 Turn sound on** �
 </td>
 <td>
 
-<video src="https://github.com/user-attachments/assets/67273615-a9c3-4d09-bd39-005f426231a4" poster="docs/vae_thumbnail.png" controls style="max-height:400px; width:100%;"></video>
+<video src="https://github.com/cymcymcymcym/notes-to-video/releases/download/v1.0.0/vae_explainer_captioned.mp4" poster="docs/vae_thumbnail.png" controls style="max-height:400px; width:100%;"></video>
 
-*🔊 Sound on. 3 min video, generated from notes in one command. Captions burned in.*
+*🔊 Sound on. 3 min video, generated from notes in one command. [Download video](https://github.com/cymcymcymcym/notes-to-video/releases/download/v1.0.0/vae_explainer_captioned.mp4)*
 
 </td>
 </tr>
