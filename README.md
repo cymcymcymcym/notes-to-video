@@ -1,5 +1,10 @@
 # make-video
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey.svg)]()
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-blueviolet.svg)](https://claude.com/claude-code)
+
 Turn notes (LaTeX, PDF, or plain text) into animated explainer videos in the style popularized by 3Blue1Brown — using Manim, TTS, and ffmpeg.
 
 A [Claude Code](https://claude.com/claude-code) skill that handles the full pipeline: content extraction, narration writing with cue markers, Manim scene generation with audio-video sync, validation, rendering, and composition.
