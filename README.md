@@ -13,7 +13,7 @@ A [Claude Code](https://claude.com/claude-code) skill that handles the full pipe
 
 ## Demo
 
-Feed it lecture notes, get an animated explainer video:
+Feed it lecture notes, get an animated explainer video. **🔊 Turn sound on** — the video has narration.
 
 <table>
 <tr>
@@ -34,9 +34,9 @@ Feed it lecture notes, get an animated explainer video:
 </td>
 <td>
 
-<video src="https://github.com/user-attachments/assets/67273615-a9c3-4d09-bd39-005f426231a4" controls muted style="max-height:400px; width:100%;"></video>
+<video src="https://github.com/user-attachments/assets/67273615-a9c3-4d09-bd39-005f426231a4" poster="docs/vae_thumbnail.png" controls style="max-height:400px; width:100%;"></video>
 
-*3 min video, generated from notes in one command*
+*🔊 Sound on. 3 min video, generated from notes in one command. Captions burned in.*
 
 </td>
 </tr>
