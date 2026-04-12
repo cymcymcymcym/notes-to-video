@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Environment / secrets
+.env
+credentials/
+
+# Manim output
+media/
+
+# Project output (generated videos/audio)
+videos/audio/
+videos/output/
+videos/review/
+
+# OS
+.DS_Store
+Thumbs.db

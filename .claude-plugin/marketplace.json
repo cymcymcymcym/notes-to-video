@@ -1,0 +1,14 @@
+{
+  "name": "make-video-marketplace",
+  "owner": {
+    "name": "cymcymcymcym",
+    "url": "https://github.com/cymcymcymcym"
+  },
+  "plugins": [
+    {
+      "name": "make-video",
+      "source": "./",
+      "description": "Turn notes into 3Blue1Brown-style animated explainer videos using Manim + TTS + ffmpeg."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "make-video",
+  "version": "1.0.0",
+  "description": "Turn notes (LaTeX, PDF, or plain text) into 3Blue1Brown-style animated explainer videos using Manim + TTS + ffmpeg.",
+  "author": {
+    "name": "cymcymcymcym",
+    "url": "https://github.com/cymcymcymcym"
+  },
+  "license": "MIT"
+}
