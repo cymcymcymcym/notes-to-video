@@ -59,7 +59,7 @@ Read the source material. Identify key concepts, flow, and dependencies.
 
 ### Checkpoint: Confirm Scope with User (MANDATORY)
 
-**Before any expensive work — figure extraction, narration drafting, TTS, or rendering — confirm the video's shape with the user in one exchange.** These questions cost seconds to ask and prevent hours of rework if the defaults don't match intent. Do not proceed past this checkpoint until the user has answered all three.
+**Before any expensive work — figure extraction, narration drafting, TTS, or rendering — confirm the video's shape with the user in one exchange.** These questions cost seconds to ask and prevent hours of rework if the defaults don't match intent. Do not proceed past this checkpoint until the user has answered all four.
 
 Ask together:
 
@@ -72,7 +72,10 @@ Ask together:
 3. **Caption format.** Default is soft subtitles (a separate `.srt` file next to the MP4 — toggleable in VLC/YouTube). Burned-in captions are permanently rendered into the video (needed for platforms like Google Drive that don't load sidecar `.srt`). Ask:
    > "Captions as a soft `.srt` next to the video (toggleable), or burned into the video (always visible, needed for Google Drive)? Or both?"
 
-The length answer feeds Step 2a (TTS WPM calibration). The caption answer determines which branch of Step 4f runs. If the user revises length after audio has been generated, apply Step 2a's recovery procedure.
+4. **TTS backend.** Default is **Edge-TTS** (free, no API key — recommended when quality is "good enough"). Alternatives: **MiniMax** (best quality, ~$0.04/min, needs `MINIMAX_API_KEY`), **Chatterbox** (voice cloning, free, needs NVIDIA GPU), **OpenAI** (~$0.06/min, needs `OPENAI_API_KEY`). Ask:
+   > "I'll use Edge-TTS (free, no API key). Prefer MiniMax (best quality, cloud), Chatterbox (voice cloning, local GPU), or OpenAI (cloud)?"
+
+The length and backend answers feed Step 2a (TTS WPM calibration — Chatterbox runs ~70% faster than the others, so the word-count target differs). The caption answer determines which branch of Step 4f runs. If the user revises length after audio has been generated, apply Step 2a's recovery procedure.
 
 ### Step 1a: Extract Source Figures (MANDATORY when source is a paper/document)
 
@@ -137,10 +140,7 @@ Write a plan to `video_sources/plan_<topic>.md`.
 | MiniMax | **150-170** | Varies by voice; expressive narrators run slower |
 | Chatterbox | **255-280** | Notably faster than other backends — plan for it |
 
-**How to calibrate, in two steps:**
-
-1. **Ask or pick the backend first.** The user's preferred backend determines the WPM.
-2. **Compute target word count = minutes × backend WPM.** For a 25-minute Chatterbox video, that's roughly 25 × 270 = **~6750 words** of narration. For the same length on Edge-TTS, it's 25 × 160 = **~4000 words**. The gap is almost 2×.
+**Calibration:** backend was chosen in the Checkpoint. **Compute target word count = minutes × backend WPM.** For a 25-minute Chatterbox video, that's 25 × 270 = **~6750 words** of narration. For the same length on Edge-TTS, it's 25 × 160 = **~4000 words**. The gap is almost 2×.
 
 If the user specifies "5+ minutes per problem" and you're using Chatterbox, each problem needs ~1350 words of narration, not ~750. Plan accordingly.
 
