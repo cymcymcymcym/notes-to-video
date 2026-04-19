@@ -116,6 +116,20 @@ If CMU Serif is not installed, `CText()` falls back to the system default automa
 ### Step 1: Extract Content
 Read the source material. Identify key concepts, flow, and dependencies.
 
+### Checkpoint: Confirm Scope with User (MANDATORY)
+
+**Before any expensive work — figure extraction, narration drafting, TTS, or rendering — confirm the video's shape with the user in one exchange.** These questions cost seconds to ask and prevent hours of rework if the defaults don't match intent. Do not proceed past this checkpoint until the user has answered both.
+
+Ask both questions together:
+
+1. **Resolution / frame rate.** Default is **1080p at 24 fps** (matches this skill's render config). Confirm or offer to override, e.g.:
+   > "I'll render at 1080p, 24 fps. Good, or do you want something different (1440p, 4K, 30/60 fps)?"
+
+2. **Target length + time allocation.** You have just read the source in Step 1, so propose a concrete total length and a one-sentence breakdown of how that time is spent across scenes. For example:
+   > "Targeting ~12 minutes, roughly: 2 min motivation → 4 min the central mechanism → 3 min training setup → 2 min results → 1 min wrap. Does that work?"
+
+The length answer feeds directly into Step 2a (narration word-count calibration against TTS WPM). If the user later revises length after audio has been generated, apply Step 2a's recovery procedure.
+
 ### Step 1a: Extract Source Figures (MANDATORY when source is a paper/document)
 
 **When the source is a paper, slides, report, or any document with figures, extract them and use them in the video.** Animated explanations feel like a highlight reel when the paper already has a better illustration — the author's own Fig 2 is usually the clearest vector diagram, the ablation table is persuasive, and qualitative sample grids are far more convincing than "FID 1.54" on a title card. Do this at planning time, not as an afterthought — once you have the figures in hand, the scene structure falls into place around them.
