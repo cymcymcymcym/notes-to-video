@@ -65,16 +65,23 @@ video_utils/                # shared video production utilities (bundled)
   tts_openai.py            # OpenAI TTS (cloud)
   validate_scenes.py       # overlap, OOB, text-overflow, line-cross, screenshot checker
 
-videos/                    # per-project output
+video_output/              # DELIVERABLE — only final captioned video(s)
+  video{N}.mp4             # captioned, ready to watch/share
+
+video_sources/             # everything else — user never needs to touch this
   src/
     part{N}_narration.py   # narration with {CUE} markers
     video{N}.py            # Manim scenes
     build_all.py           # unified build script
   audio/video{N}/          # TTS output + durations.json
-  output/                  # final MP4s
+  output/                  # uncaptioned MP4s, per-scene MP4s, SRT
+  media/                   # manim render cache
   review/                  # validation screenshots
   plan_<topic>.md          # series plan
+  render_*.log             # render logs
 ```
+
+**Key principle:** Users just want the video. `video_output/` contains only the finished, captioned deliverable — nothing else. All intermediate artifacts (narration scripts, audio, uncaptioned renders, per-scene files, logs) live in `video_sources/`. The build script produces into both directories.
 
 ### First-Time Project Setup
 
@@ -109,11 +116,110 @@ If CMU Serif is not installed, `CText()` falls back to the system default automa
 ### Step 1: Extract Content
 Read the source material. Identify key concepts, flow, and dependencies.
 
+### Step 1a: Extract Source Figures (MANDATORY when source is a paper/document)
+
+**When the source is a paper, slides, report, or any document with figures, extract them and use them in the video.** Animated explanations feel like a highlight reel when the paper already has a better illustration — the author's own Fig 2 is usually the clearest vector diagram, the ablation table is persuasive, and qualitative sample grids are far more convincing than "FID 1.54" on a title card. Do this at planning time, not as an afterthought — once you have the figures in hand, the scene structure falls into place around them.
+
+**Good candidates to extract:**
+- Headline concept diagrams (Fig 1, usually)
+- Vector/illustration figures for the central object (attraction/repulsion, architecture overviews)
+- Ablation tables (numbers speak louder than animated bars)
+- Qualitative result grids (generated samples, before/after)
+- 2D toy/sanity-check panels
+
+**Storage:** put extracted images in `video_sources/src/assets/<topic>/` so they are co-located with scene code.
+
+**Extraction — render page + clip with PyMuPDF.** This preserves captions, labels, and any vector overlays. It is more reliable than `page.get_images()` alone (which misses drawn elements). Render at zoom ≥ 3.0 (≈ 216 DPI) so the image stays crisp when scaled in Manim.
+
+```python
+import fitz
+from pathlib import Path
+
+PDF = "path/to/paper.pdf"
+OUT = Path("video_sources/src/assets/<topic>/")
+OUT.mkdir(parents=True, exist_ok=True)
+
+doc = fitz.open(PDF)
+
+def render(page_num, out_name, clip, zoom=4.0):
+    """page_num is 1-indexed. clip is fitz.Rect in PDF points.
+    PDF letter page ≈ 612 × 792 pt. Two-column layout ≈ 300 pt per column.
+    """
+    page = doc[page_num - 1]
+    pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip, alpha=False)
+    pix.save(str(OUT / out_name))
+
+# Example: Fig 2 in left column of page 4, top half
+render(4, "fig2_illustration.png", fitz.Rect(55, 50, 305, 320))
+```
+
+Iterate on the clip rectangles visually: render wide first, inspect the PNG with `Read`, then tighten the bounding box. Drop Algorithm boxes, adjacent tables, and body text — keep only the figure and (optionally) its caption line.
+
+**If you want embedded images only** (e.g., sample grids that are stored as a single PNG):
+
+```python
+for page_idx, page in enumerate(doc):
+    for i, img in enumerate(page.get_images()):
+        base = doc.extract_image(img[0])
+        print(f"p{page_idx+1}.img{i}: {base['width']}x{base['height']} ({base['ext']})")
+```
+
+Use this first to see what's actually embedded, then render-and-clip for anything composite.
+
+**Using figures in Manim.** Load with `ImageMobject`, fit to frame, add a small attribution caption:
+
+```python
+from manim import ImageMobject, config
+
+fig = ImageMobject("src/assets/<topic>/fig2.png") \
+    .set_width(config.frame_width - 1.4)  # leave side padding
+# or .set_height(4.5) if aspect ratio is tall
+
+cap = CText("Figure 2 — Author et al. YEAR", font_size=18, color=DIMMED) \
+    .next_to(fig, DOWN, buff=0.2)  # or UP, depending on layout
+
+self.play(FadeIn(fig, shift=UP * 0.15), run_time=1.4)
+self.play(FadeIn(cap), run_time=0.6)
+```
+
+**Sizing gotcha:** wide figures (aspect ratio > 3:1) overflow if you set `height`. Always prefer `.set_width(config.frame_width - 1.4)` for wide panels, or test both and read the validator output for OOB warnings.
+
+**Attribution:** always include a brief inline caption — "Figure N — Author et al. YEAR". It takes one line, respects the source, and keeps the viewer oriented.
+
+**Treat figures as first-class scene elements,** not last-minute decoration: plan which paper figure lives in which scene in your `plan_<topic>.md`, then build the narration around the figure reveal with its own `{FIG_N}` cue marker.
+
 ### Step 2: Plan the Video Series
-Write a plan to `videos/plan_<topic>.md`.
+Write a plan to `video_sources/plan_<topic>.md`.
+
+### Step 2a: Calibrate narration length against TTS pace (MANDATORY)
+
+**Before writing a single segment of narration, estimate how long the TTS will actually run.** Different backends speak at very different paces. Getting this wrong means generating 20+ minutes of audio, discovering the video is half the target length, rewriting narration, and regenerating — a one-hour round trip.
+
+**Approximate speaking paces (words per minute) for each backend:**
+
+| Backend | Typical WPM | Notes |
+|---------|------|-------|
+| Edge-TTS | **155-165** | Neutral, newscaster pace |
+| OpenAI TTS | **160-175** | Similar to Edge, slightly faster on some voices |
+| MiniMax | **150-170** | Varies by voice; expressive narrators run slower |
+| Chatterbox | **255-280** | Notably faster than other backends — plan for it |
+
+**How to calibrate, in two steps:**
+
+1. **Ask or pick the backend first.** The user's preferred backend determines the WPM.
+2. **Compute target word count = minutes × backend WPM.** For a 25-minute Chatterbox video, that's roughly 25 × 270 = **~6750 words** of narration. For the same length on Edge-TTS, it's 25 × 160 = **~4000 words**. The gap is almost 2×.
+
+If the user specifies "5+ minutes per problem" and you're using Chatterbox, each problem needs ~1350 words of narration, not ~750. Plan accordingly.
+
+**When the estimate is off and you discover it only after generating TTS**, fix in this order before touching anything else:
+1. Regenerate the WPM estimate from the actual `durations.json` (total words ÷ total seconds × 60).
+2. Revise the narration to the correct target length.
+3. Delete the old audio directory and rerun TTS — *don't* just append to the existing audio, durations and cue tables need to be recomputed from scratch.
+
+A 20-second quick sanity check of an early segment is worth doing once you've committed to a backend — if your first segment clocks in at 15 seconds when you budgeted 30, stop and recalibrate before writing the rest.
 
 ### Step 3: Write Narration with Cue Markers
-Write narration as a Python dict in `videos/src/part{N}_narration.py`:
+Write narration as a Python dict in `video_sources/src/part{N}_narration.py`:
 ```python
 VIDEO1 = {
     "Scene1_Name": {"segments": {
@@ -240,7 +346,7 @@ Example for a derivation:
 
 ### Step 4: Build Source Files
 
-#### 4a. Manim Scenes — `videos/src/video{N}.py`
+#### 4a. Manim Scenes — `video_sources/src/video{N}.py`
 
 **Required boilerplate:**
 ```python
@@ -326,11 +432,11 @@ The validator lives at `video_utils/validate_scenes.py`. Three modes:
 **Usage:**
 ```bash
 # 1. Fast automated check
-python video_utils/validate_scenes.py videos/src/video{N}.py
+python video_utils/validate_scenes.py video_sources/src/video{N}.py
 
 # 2. Screenshot visual review — read every PNG
-python video_utils/validate_scenes.py videos/src/video{N}.py --screenshots
-# Then: Read videos/review/<stem>/*.png
+python video_utils/validate_scenes.py video_sources/src/video{N}.py --screenshots
+# Then: Read video_sources/review/<stem>/*.png
 ```
 
 **Workflow:**
@@ -380,7 +486,7 @@ All produce `durations.json` with sentence timing + cue timestamps.
 
 **Default (CPU)** — works on all platforms:
 ```bash
-python -m manim render -qh --fps 24 --disable_caching videos/src/video{N}.py SceneName
+python -m manim render -qh --fps 24 --disable_caching video_sources/src/video{N}.py SceneName
 ```
 
 **Optional speedup — parallel rendering** (create `fast_render.py` in project):
@@ -444,8 +550,10 @@ Key settings: FontSize=11 (small, non-intrusive), MarginV=8 (hugs bottom edge), 
 
 Give the user the build command:
 ```bash
-python -u videos/src/build_all.py
+python -u video_sources/src/build_all.py
 ```
+
+After the build completes, the final captioned video is in `video_output/`. Point the user there — they should never need to look inside `video_sources/`.
 
 ## Conventions
 
