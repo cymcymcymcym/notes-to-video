@@ -49,10 +49,40 @@ Feed it lecture notes, get an animated explainer video. **🔊 Turn sound on** �
 
 ## Install
 
-**npm (recommended):**
+This is a Claude Code skill, not a standalone CLI. The npm package is a one-shot installer that drops the skill files where Claude Code can find them.
+
+**1. Install the skill files:**
+
 ```bash
 npx notes-to-video
 ```
+
+This copies:
+- `skills/notes-to-video/` → `~/.claude/skills/notes-to-video/`
+- `video_utils/` → `~/tools/video_utils/` (shared Python helpers the skill imports)
+
+Re-run any time to upgrade.
+
+**2. Set up the Python environment** (one-time, shared across projects):
+
+```bash
+python3 -m venv ~/tools/.venv
+~/tools/.venv/bin/pip install manim edge-tts pydub faster-whisper
+# Optional: chatterbox-tts (local voice cloning), torch with CUDA
+```
+
+**3. (Optional) Add API keys** for cloud TTS backends:
+
+```bash
+mkdir -p ~/tools/credentials
+cat > ~/tools/credentials/.env <<'EOF'
+MINIMAX_API_KEY=...
+MINIMAX_GROUP_ID=...
+OPENAI_API_KEY=...
+EOF
+```
+
+### Alternative install methods
 
 **Claude Code plugin:**
 ```bash
@@ -60,21 +90,16 @@ npx notes-to-video
 /plugin install notes-to-video@notes-to-video-marketplace
 ```
 
-**Manual:** clone this repo, copy `skills/notes-to-video/` to `~/.claude/skills/` and `video_utils/` to your project root.
+**Manual:** clone this repo, copy `skills/notes-to-video/` to `~/.claude/skills/` and `video_utils/` to `~/tools/video_utils/`.
 
 ## Quick Start
 
-1. Install dependencies:
-   ```bash
-   pip install manim edge-tts pydub
+1. Open Claude Code in your project and ask:
+   ```
+   make a 3b1b-style video from my_notes.tex
    ```
 
-2. In Claude Code, run:
-   ```
-   /notes-to-video my_notes.tex
-   ```
-
-3. Claude will:
+2. Claude will:
    - Extract key concepts from your notes
    - Write a narration script with cue markers
    - Generate Manim scenes synced to the narration
