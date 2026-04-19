@@ -137,14 +137,42 @@ This produces smooth, naturally-paced videos where animations fire exactly when 
 
 ## Project Structure
 
+Each video is a self-contained `<project>/` subfolder. Adding a second video is zero migration — just create another.
+
 ```
-video_utils/                # Bundled library
+final/                               # THE DELIVERABLE — what you watch/share
+  <project>/
+    <project>.pdf                    # source paper, if applicable
+    <project>.mp4                    # final video
+    <project>.srt                    # soft subtitles (sidecar)
+    <project>_captioned.mp4          # optional: burned-in captions
+
+intermediate/                        # everything else (heavy; .gitignore by default)
+  <project>/
+    src/
+      video_<project>.py             # Manim scenes
+      part_<project>_narration.py    # narration with {CUE} markers
+      generate_tts_<project>.py      # TTS runner
+      build_<project>.py             # render + mux + caption
+      assets/<project>/*.png         # extracted source figures
+    audio/video_<project>/           # TTS output + durations.json
+    media/videos/video_<project>/    # manim render cache
+    review/video_<project>/          # validator screenshots
+    output/                          # per-scene muxed MP4s
+    plan_<project>.md                # scene-by-scene plan
+```
+
+The skill ships with:
+
+```
+video_utils/                # Bundled library (→ ~/tools/video_utils/ on install)
   manim_helpers.py          # CText, colors, sync helpers
   tts_edge.py              # Edge-TTS (free, default)
   tts_minimax.py           # MiniMax TTS (cloud)
   tts_local.py             # Chatterbox + Whisper (local)
   tts_openai.py            # OpenAI TTS (cloud)
   validate_scenes.py       # Scene validator
+  captions.py              # SRT generator
 
 skills/notes-to-video/
   SKILL.md                 # Claude Code skill definition

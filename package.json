@@ -1,6 +1,6 @@
 {
   "name": "notes-to-video",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Turn notes into animated explainer videos in the style popularized by 3Blue1Brown. Claude Code skill + Manim + TTS + ffmpeg.",
   "bin": "./bin/notes-to-video.js",
   "engines": {

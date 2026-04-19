@@ -1,5 +1,5 @@
 ---
-name: make-video
+name: notes-to-video
 description: Turn notes (LaTeX, PDF, or plain text) into 3Blue1Brown-style animated videos using Manim + TTS + ffmpeg. Use when the user wants to create an explainer video.
 user-invocable: true
 argument-hint: <source-file-or-topic>
@@ -24,33 +24,51 @@ Turn notes into 3Blue1Brown-style animated explainer videos.
 
 ### Project Structure
 
-Each project is self-contained. The `video_utils/` library ships with the skill:
+Every video is a self-contained `<project>/` subfolder. Use this layout from day one so a repo with many explainers stays navigable:
 
 ```
-video_utils/                # shared utilities (bundled)
-  manim_helpers.py          # CText, colors, sync helpers
+final/                                 # THE DELIVERABLE — what users watch/share
+  <project>/
+    <project>.pdf                      # source paper, if applicable
+    <project>.mp4                      # final video
+    <project>.srt                      # soft captions (sidecar)
+    <project>_captioned.mp4            # optional: burned-in captions variant
+
+intermediate/                          # everything else (heavy; .gitignore by default)
+  <project>/
+    src/
+      video_<project>.py               # Manim scenes
+      part_<project>_narration.py      # narration with {CUE} markers
+      generate_tts_<project>.py        # TTS runner
+      build_<project>.py               # render + mux + caption
+      assets/<project>/*.png           # extracted source figures (Step 1a)
+    audio/video_<project>/             # TTS output + durations.json
+    media/videos/video_<project>/      # manim render cache
+    review/video_<project>/            # validator screenshots
+    output/                            # per-scene muxed MP4s, concat.txt
+    plan_<project>.md                  # scene-by-scene plan
+
+video_utils/                           # shared helpers (bundled with the skill)
+  manim_helpers.py                     # CText, colors, sync helpers
   tts_{edge,minimax,local,openai}.py   # 4 TTS backends with cue estimation
-  validate_scenes.py        # overlap / OOB / overflow / line-cross / screenshot checker
-  captions.py               # generate_srt(durations_json, output_srt)
-
-video_output/               # DELIVERABLE — only the final captioned video(s)
-  video{N}.mp4
-
-video_sources/              # everything else — user never touches this
-  src/
-    part{N}_narration.py    # narration with {CUE} markers
-    video{N}.py             # Manim scenes
-    build_all.py            # unified build script
-    assets/<topic>/*.png    # extracted source figures (see Step 1a)
-  audio/video{N}/           # TTS output + durations.json
-  output/                   # uncaptioned MP4s, per-scene MP4s, SRT
-  media/                    # manim render cache
-  review/                   # validation screenshots
-  plan_<topic>.md           # series plan
-  render_*.log
+  validate_scenes.py                   # overlap / OOB / overflow / line-cross / screenshot checker
+  captions.py                          # generate_srt(durations_json, output_srt)
 ```
 
-**Key principle:** Users only want the video. `video_output/` holds the finished captioned deliverable; everything intermediate lives in `video_sources/`.
+**Why per-project subfolders from day one:**
+
+- **`final/<project>/` is self-contained.** Paper PDF, video, and captions share the same slug — `vlc final/grpo/grpo.mp4` auto-loads `grpo.srt`. When the user asks "where's the video?", they open one folder.
+- **Adding a second video is zero migration.** Just create another `final/<other>/` + `intermediate/<other>/`. No renaming, no moving. The moment the user builds video #2, the repo scales cleanly.
+- **The slug ties everything together.** Pick a short name (`grpo`, `drifting`, `vae_intro`) and use it consistently: subfolder name, filename stem, and interpolated wherever the scripts hardcode a project name (`video_<project>.py`, `audio/video_<project>/`). Shared tooling discovers projects by scanning these slugs.
+
+**For multi-topic repos** (e.g., many papers organized by subject), add a topic layer:
+```
+final/<topic>/<project>/
+intermediate/<topic>/<project>/
+```
+Scripts keep working — each project subtree is self-contained, and relative paths (`Path(__file__).resolve().parents[1]`) still resolve to the project root regardless of how deeply nested.
+
+**Don't flatten everything into one `videos/` folder.** When the user has three projects, a flat `videos/src/video1.py`, `video2.py`, `video3.py` with shared `audio/`, `media/`, `output/` directories interleaves projects and makes per-project cleanup impossible. Per-project subfolders prevent this from day one.
 
 ## Pipeline
 
@@ -83,7 +101,7 @@ The length and backend answers feed Step 2a (TTS WPM calibration — Chatterbox 
 
 **Good candidates:** headline concept diagrams (Fig 1), architecture / vector illustrations, ablation tables, qualitative sample grids, 2D toy panels.
 
-**Storage:** `video_sources/src/assets/<topic>/` (co-located with scene code).
+**Storage:** `intermediate/<project>/src/assets/<project>/` (co-located with scene code).
 
 **Extraction — render-and-clip with PyMuPDF.** More reliable than `page.get_images()` (which misses vector overlays). Zoom ≥ 3.0 (~216 DPI) so figures stay crisp when scaled in Manim:
 
@@ -92,7 +110,7 @@ import fitz
 from pathlib import Path
 
 PDF = "path/to/paper.pdf"
-OUT = Path("video_sources/src/assets/<topic>/"); OUT.mkdir(parents=True, exist_ok=True)
+OUT = Path("intermediate/<project>/src/assets/<project>/"); OUT.mkdir(parents=True, exist_ok=True)
 doc = fitz.open(PDF)
 
 def render(page_num, out_name, clip, zoom=4.0):
@@ -116,7 +134,7 @@ for p, page in enumerate(doc):
 **Using figures in Manim** — prefer `set_width` for safety (wide aspect ratios overflow if you set height). Always include a brief attribution caption:
 
 ```python
-fig = ImageMobject("src/assets/<topic>/fig2.png").set_width(config.frame_width - 1.4)
+fig = ImageMobject("src/assets/<project>/fig2.png").set_width(config.frame_width - 1.4)
 cap = CText("Figure 2 — Author et al. YEAR", font_size=18, color=DIMMED).next_to(fig, DOWN, buff=0.2)
 self.play(FadeIn(fig, shift=UP * 0.15), run_time=1.4)
 self.play(FadeIn(cap), run_time=0.6)
@@ -125,7 +143,7 @@ self.play(FadeIn(cap), run_time=0.6)
 Treat figures as first-class scene elements: assign a `{FIG_N}` cue marker per figure reveal in narration.
 
 ### Step 2: Plan the Video Series
-Write a plan to `video_sources/plan_<topic>.md`.
+Write a plan to `intermediate/<project>/plan_<project>.md`.
 
 ### Step 2a: Calibrate narration length against TTS pace (MANDATORY)
 
@@ -152,7 +170,7 @@ If the user specifies "5+ minutes per problem" and you're using Chatterbox, each
 A 20-second quick sanity check of an early segment is worth doing once you've committed to a backend — if your first segment clocks in at 15 seconds when you budgeted 30, stop and recalibrate before writing the rest.
 
 ### Step 3: Write Narration with Cue Markers
-Write narration as a Python dict in `video_sources/src/part{N}_narration.py`:
+Write narration as a Python dict in `intermediate/<project>/src/part_<project>_narration.py`:
 ```python
 VIDEO1 = {
     "Scene1_Name": {"segments": {
@@ -246,17 +264,18 @@ Example for a derivation:
 
 ### Step 4: Build Source Files
 
-#### 4a. Manim Scenes — `video_sources/src/video{N}.py`
+#### 4a. Manim Scenes — `intermediate/<project>/src/video_<project>.py`
 
 **Required boilerplate:**
 ```python
 import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))  # project root
+sys.path.insert(0, os.path.expanduser("~/tools"))  # where `npx notes-to-video` installs video_utils
 from pathlib import Path
 from video_utils.manim_helpers import *
 from video_utils.manim_helpers import make_sync_helpers
 
-DURATIONS_FILE = Path(__file__).resolve().parents[1] / "audio" / "video{N}" / "durations.json"
+# parents[1] resolves to intermediate/<project>/ regardless of topic nesting
+DURATIONS_FILE = Path(__file__).resolve().parents[1] / "audio" / "video_<project>" / "durations.json"
 seg_dur, cue_t, until, sync, fill = make_sync_helpers(DURATIONS_FILE)
 ```
 
@@ -327,11 +346,11 @@ The validator lives at `video_utils/validate_scenes.py`. Three modes:
 **Usage:**
 ```bash
 # 1. Fast automated check
-python video_utils/validate_scenes.py video_sources/src/video{N}.py
+python ~/tools/video_utils/validate_scenes.py intermediate/<project>/src/video_<project>.py
 
 # 2. Screenshot visual review — read every PNG
-python video_utils/validate_scenes.py video_sources/src/video{N}.py --screenshots
-# Then: Read video_sources/review/<stem>/*.png
+python ~/tools/video_utils/validate_scenes.py intermediate/<project>/src/video_<project>.py --screenshots
+# Then: Read intermediate/<project>/review/video_<project>/*.png
 ```
 
 **Workflow:**
@@ -341,7 +360,7 @@ python video_utils/validate_scenes.py video_sources/src/video{N}.py --screenshot
 
 #### 4c. TTS Generation
 
-Backend was chosen in Step 2a. All four live in `video_utils/` and produce `durations.json` with sentence timing + cue timestamps.
+Backend was chosen in Step 2a. All four live in `video_utils/` and write `intermediate/<project>/audio/video_<project>/durations.json` with sentence timing + cue timestamps.
 
 | Backend | Quality | Cost | Extra install | Module |
 |---------|---------|------|--------------|--------|
@@ -362,7 +381,9 @@ timing = generate_and_save(SCENES, AUDIO_DIR, voice=...)
 Resolution/fps were confirmed in the Checkpoint. Manim quality flags: `-ql` 480p (preview) · `-qm` 720p · `-qh` 1080p (default) · `-qp` 1440p.
 
 ```bash
-python -m manim render -qh --fps 24 --disable_caching video_sources/src/video{N}.py SceneName
+# Run from intermediate/<project>/ so manim's media/ cache is per-project
+cd intermediate/<project>
+python -m manim render -qh --fps 24 --disable_caching src/video_<project>.py SceneName
 ```
 
 **Speedup:** parallel rendering across CPU cores via a project-local `fast_render.py` (`parallel_render(MANIM_FILE, SCENE_ORDER, quality="-qh", fps=24)`). GPU (NVENC) encoding barely helps — the bottleneck is frame generation, not encoding.
@@ -382,7 +403,8 @@ ffmpeg -y -f concat -safe 0 -i list.txt -c copy final.mp4
 
 ```python
 from video_utils.captions import generate_srt
-generate_srt("audio/video1/durations.json", "output/video1.srt")
+generate_srt("intermediate/<project>/audio/video_<project>/durations.json",
+             "final/<project>/<project>.srt")
 ```
 
 **Soft subs (recommended):** ship the `.srt` next to the MP4. Players (VLC, YouTube) load it automatically and it's toggleable.
@@ -397,10 +419,20 @@ Key choices: small non-intrusive font, bottom-hugging margin, semi-transparent b
 
 Give the user the build command:
 ```bash
-python -u video_sources/src/build_all.py
+python -u intermediate/<project>/src/build_<project>.py
 ```
 
-After the build completes, the final captioned video is in `video_output/`. Point the user there — they should never need to look inside `video_sources/`.
+After the build completes, point the user to `final/<project>/` — everything they want to watch or share lives there:
+
+```
+final/<project>/
+  <project>.pdf            # source paper (if any)
+  <project>.mp4            # final video
+  <project>.srt            # soft subtitles
+  <project>_captioned.mp4  # burned-in variant, if they asked for one
+```
+
+They should never need to look inside `intermediate/<project>/`. The build script writes both directories; that's by design.
 
 ## Conventions
 

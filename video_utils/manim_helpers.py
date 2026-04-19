@@ -1,6 +1,6 @@
 """Shared Manim helpers: CText (kerning fix), sync helpers, standard boilerplate.
 
-Usage in any video{N}.py:
+Usage in any video_<project>.py:
     from video_utils.manim_helpers import *
 """
 import json
