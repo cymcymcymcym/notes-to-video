@@ -14,102 +14,43 @@ Turn notes into 3Blue1Brown-style animated explainer videos.
 
 ## Environment Setup
 
-### Prerequisites
+**Required:** Python 3.10+, FFmpeg, `pip install manim edge-tts pydub`. LaTeX only if equations are used.
 
-| Dependency | Required | Install |
-|-----------|----------|---------|
-| Python 3.10+ | Yes | System package manager |
-| FFmpeg | Yes | See platform instructions below |
-| LaTeX | For equations only | `texlive` / MiKTeX / MacTeX |
+**FFmpeg per OS:** `apt install ffmpeg` (Linux) · `brew install ffmpeg` (macOS) · `choco install ffmpeg` or `winget install Gyan.FFmpeg` (Windows).
 
-### Platform Install
+**Optional TTS extras** (install only the backend you'll use): MiniMax → `pip install httpx python-dotenv` + `MINIMAX_API_KEY` · Chatterbox (NVIDIA GPU) → `pip install chatterbox-tts faster-whisper torch` · OpenAI → `pip install openai` + `OPENAI_API_KEY`.
 
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt update && sudo apt install -y ffmpeg
-pip install manim edge-tts pydub
-```
-
-**macOS:**
-```bash
-brew install ffmpeg
-pip install manim edge-tts pydub
-```
-
-**Windows:**
-```powershell
-# Install ffmpeg via chocolatey or winget
-choco install ffmpeg   # or: winget install Gyan.FFmpeg
-pip install manim edge-tts pydub
-```
-
-**Optional extras** (install only if you choose these TTS backends):
-```bash
-# MiniMax TTS (cloud, best quality, requires API key)
-pip install httpx python-dotenv
-
-# Chatterbox TTS (local, voice cloning, requires NVIDIA GPU)
-pip install chatterbox-tts faster-whisper torch
-```
+**Font (optional but recommended):** CMU Serif for authentic 3b1b look — `apt install fonts-cmu` (Linux) / `brew install --cask font-cmu-serif` (macOS) / [CTAN .otf](https://www.ctan.org/pkg/cm-unicode) (Windows). `CText()` falls back to system default if missing.
 
 ### Project Structure
 
 Each project is self-contained. The `video_utils/` library ships with the skill:
 
 ```
-video_utils/                # shared video production utilities (bundled)
+video_utils/                # shared utilities (bundled)
   manim_helpers.py          # CText, colors, sync helpers
-  tts_edge.py              # Edge-TTS with cue estimation (free, default)
-  tts_minimax.py           # MiniMax TTS with cue estimation (cloud)
-  tts_local.py             # Chatterbox + faster-whisper (local GPU)
-  tts_openai.py            # OpenAI TTS (cloud)
-  validate_scenes.py       # overlap, OOB, text-overflow, line-cross, screenshot checker
+  tts_{edge,minimax,local,openai}.py   # 4 TTS backends with cue estimation
+  validate_scenes.py        # overlap / OOB / overflow / line-cross / screenshot checker
+  captions.py               # generate_srt(durations_json, output_srt)
 
-video_output/              # DELIVERABLE — only final captioned video(s)
-  video{N}.mp4             # captioned, ready to watch/share
+video_output/               # DELIVERABLE — only the final captioned video(s)
+  video{N}.mp4
 
-video_sources/             # everything else — user never needs to touch this
+video_sources/              # everything else — user never touches this
   src/
-    part{N}_narration.py   # narration with {CUE} markers
-    video{N}.py            # Manim scenes
-    build_all.py           # unified build script
-  audio/video{N}/          # TTS output + durations.json
-  output/                  # uncaptioned MP4s, per-scene MP4s, SRT
-  media/                   # manim render cache
-  review/                  # validation screenshots
-  plan_<topic>.md          # series plan
-  render_*.log             # render logs
+    part{N}_narration.py    # narration with {CUE} markers
+    video{N}.py             # Manim scenes
+    build_all.py            # unified build script
+    assets/<topic>/*.png    # extracted source figures (see Step 1a)
+  audio/video{N}/           # TTS output + durations.json
+  output/                   # uncaptioned MP4s, per-scene MP4s, SRT
+  media/                    # manim render cache
+  review/                   # validation screenshots
+  plan_<topic>.md           # series plan
+  render_*.log
 ```
 
-**Key principle:** Users just want the video. `video_output/` contains only the finished, captioned deliverable — nothing else. All intermediate artifacts (narration scripts, audio, uncaptioned renders, per-scene files, logs) live in `video_sources/`. The build script produces into both directories.
-
-### First-Time Project Setup
-
-```bash
-python -m venv .venv && source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install manim edge-tts pydub
-```
-
-### TTS Selection
-
-**Ask the user which TTS backend they prefer before generating audio.** Default to Edge-TTS if they have no preference.
-
-| Backend | Quality | Cost | Requirements | Best for |
-|---------|---------|------|-------------|----------|
-| **Edge-TTS** (default) | Good | Free | None | Getting started, no API key needed |
-| **MiniMax** | Best | ~$0.04/min | `MINIMAX_API_KEY` in `.env` | Production quality |
-| **Chatterbox** | Good + voice cloning | Free | NVIDIA GPU | Privacy, custom voices |
-| **OpenAI TTS** | Good | ~$0.06/min | `OPENAI_API_KEY` in `.env` | OpenAI ecosystem users |
-
-### Font Configuration
-
-CMU Serif (3Blue1Brown's font) is **strongly recommended** for the best visual results:
-
-- **Linux:** `sudo apt install fonts-cmu`
-- **macOS:** `brew install --cask font-cmu-serif` (via homebrew-cask-fonts)
-- **Windows:** Download from [CTAN](https://www.ctan.org/pkg/cm-unicode) and install the .otf files
-
-If CMU Serif is not installed, `CText()` falls back to the system default automatically.
+**Key principle:** Users only want the video. `video_output/` holds the finished captioned deliverable; everything intermediate lives in `video_sources/`.
 
 ## Pipeline
 
@@ -118,89 +59,67 @@ Read the source material. Identify key concepts, flow, and dependencies.
 
 ### Checkpoint: Confirm Scope with User (MANDATORY)
 
-**Before any expensive work — figure extraction, narration drafting, TTS, or rendering — confirm the video's shape with the user in one exchange.** These questions cost seconds to ask and prevent hours of rework if the defaults don't match intent. Do not proceed past this checkpoint until the user has answered both.
+**Before any expensive work — figure extraction, narration drafting, TTS, or rendering — confirm the video's shape with the user in one exchange.** These questions cost seconds to ask and prevent hours of rework if the defaults don't match intent. Do not proceed past this checkpoint until the user has answered all three.
 
-Ask both questions together:
+Ask together:
 
 1. **Resolution / frame rate.** Default is **1080p at 24 fps** (matches this skill's render config). Confirm or offer to override, e.g.:
    > "I'll render at 1080p, 24 fps. Good, or do you want something different (1440p, 4K, 30/60 fps)?"
 
-2. **Target length + time allocation.** You have just read the source in Step 1, so propose a concrete total length and a one-sentence breakdown of how that time is spent across scenes. For example:
+2. **Target length + time allocation.** You've just read the source in Step 1, so propose a concrete total and a one-sentence breakdown across scenes, e.g.:
    > "Targeting ~12 minutes, roughly: 2 min motivation → 4 min the central mechanism → 3 min training setup → 2 min results → 1 min wrap. Does that work?"
 
-The length answer feeds directly into Step 2a (narration word-count calibration against TTS WPM). If the user later revises length after audio has been generated, apply Step 2a's recovery procedure.
+3. **Caption format.** Default is soft subtitles (a separate `.srt` file next to the MP4 — toggleable in VLC/YouTube). Burned-in captions are permanently rendered into the video (needed for platforms like Google Drive that don't load sidecar `.srt`). Ask:
+   > "Captions as a soft `.srt` next to the video (toggleable), or burned into the video (always visible, needed for Google Drive)? Or both?"
+
+The length answer feeds Step 2a (TTS WPM calibration). The caption answer determines which branch of Step 4f runs. If the user revises length after audio has been generated, apply Step 2a's recovery procedure.
 
 ### Step 1a: Extract Source Figures (MANDATORY when source is a paper/document)
 
-**When the source is a paper, slides, report, or any document with figures, extract them and use them in the video.** Animated explanations feel like a highlight reel when the paper already has a better illustration — the author's own Fig 2 is usually the clearest vector diagram, the ablation table is persuasive, and qualitative sample grids are far more convincing than "FID 1.54" on a title card. Do this at planning time, not as an afterthought — once you have the figures in hand, the scene structure falls into place around them.
+**When the source has figures, extract them and use them in the video.** The author's own Fig 2 is almost always a clearer vector diagram than anything you can animate, ablation tables are more persuasive than "FID 1.54" on a title card, and qualitative sample grids beat narration. Plan figure placement into `plan_<topic>.md` before writing narration — scenes fall into place around figure reveals, not around animated bars.
 
-**Good candidates to extract:**
-- Headline concept diagrams (Fig 1, usually)
-- Vector/illustration figures for the central object (attraction/repulsion, architecture overviews)
-- Ablation tables (numbers speak louder than animated bars)
-- Qualitative result grids (generated samples, before/after)
-- 2D toy/sanity-check panels
+**Good candidates:** headline concept diagrams (Fig 1), architecture / vector illustrations, ablation tables, qualitative sample grids, 2D toy panels.
 
-**Storage:** put extracted images in `video_sources/src/assets/<topic>/` so they are co-located with scene code.
+**Storage:** `video_sources/src/assets/<topic>/` (co-located with scene code).
 
-**Extraction — render page + clip with PyMuPDF.** This preserves captions, labels, and any vector overlays. It is more reliable than `page.get_images()` alone (which misses drawn elements). Render at zoom ≥ 3.0 (≈ 216 DPI) so the image stays crisp when scaled in Manim.
+**Extraction — render-and-clip with PyMuPDF.** More reliable than `page.get_images()` (which misses vector overlays). Zoom ≥ 3.0 (~216 DPI) so figures stay crisp when scaled in Manim:
 
 ```python
 import fitz
 from pathlib import Path
 
 PDF = "path/to/paper.pdf"
-OUT = Path("video_sources/src/assets/<topic>/")
-OUT.mkdir(parents=True, exist_ok=True)
-
+OUT = Path("video_sources/src/assets/<topic>/"); OUT.mkdir(parents=True, exist_ok=True)
 doc = fitz.open(PDF)
 
 def render(page_num, out_name, clip, zoom=4.0):
     """page_num is 1-indexed. clip is fitz.Rect in PDF points.
-    PDF letter page ≈ 612 × 792 pt. Two-column layout ≈ 300 pt per column.
-    """
-    page = doc[page_num - 1]
-    pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip, alpha=False)
+    Letter page ≈ 612 × 792 pt; two-column ≈ 300 pt per column."""
+    pix = doc[page_num - 1].get_pixmap(matrix=fitz.Matrix(zoom, zoom), clip=clip, alpha=False)
     pix.save(str(OUT / out_name))
 
-# Example: Fig 2 in left column of page 4, top half
-render(4, "fig2_illustration.png", fitz.Rect(55, 50, 305, 320))
+render(4, "fig2_illustration.png", fitz.Rect(55, 50, 305, 320))  # Fig 2, left column, top half
 ```
 
-Iterate on the clip rectangles visually: render wide first, inspect the PNG with `Read`, then tighten the bounding box. Drop Algorithm boxes, adjacent tables, and body text — keep only the figure and (optionally) its caption line.
+Iterate the clip box visually: render wide first, `Read` the PNG, tighten. Drop Algorithm boxes, adjacent tables, and body text — keep only the figure plus its caption line.
 
-**If you want embedded images only** (e.g., sample grids that are stored as a single PNG):
-
+For purely-embedded images (sample grids saved as single PNGs), inspect first:
 ```python
-for page_idx, page in enumerate(doc):
+for p, page in enumerate(doc):
     for i, img in enumerate(page.get_images()):
-        base = doc.extract_image(img[0])
-        print(f"p{page_idx+1}.img{i}: {base['width']}x{base['height']} ({base['ext']})")
+        b = doc.extract_image(img[0]); print(f"p{p+1}.img{i}: {b['width']}x{b['height']} ({b['ext']})")
 ```
 
-Use this first to see what's actually embedded, then render-and-clip for anything composite.
-
-**Using figures in Manim.** Load with `ImageMobject`, fit to frame, add a small attribution caption:
+**Using figures in Manim** — prefer `set_width` for safety (wide aspect ratios overflow if you set height). Always include a brief attribution caption:
 
 ```python
-from manim import ImageMobject, config
-
-fig = ImageMobject("src/assets/<topic>/fig2.png") \
-    .set_width(config.frame_width - 1.4)  # leave side padding
-# or .set_height(4.5) if aspect ratio is tall
-
-cap = CText("Figure 2 — Author et al. YEAR", font_size=18, color=DIMMED) \
-    .next_to(fig, DOWN, buff=0.2)  # or UP, depending on layout
-
+fig = ImageMobject("src/assets/<topic>/fig2.png").set_width(config.frame_width - 1.4)
+cap = CText("Figure 2 — Author et al. YEAR", font_size=18, color=DIMMED).next_to(fig, DOWN, buff=0.2)
 self.play(FadeIn(fig, shift=UP * 0.15), run_time=1.4)
 self.play(FadeIn(cap), run_time=0.6)
 ```
 
-**Sizing gotcha:** wide figures (aspect ratio > 3:1) overflow if you set `height`. Always prefer `.set_width(config.frame_width - 1.4)` for wide panels, or test both and read the validator output for OOB warnings.
-
-**Attribution:** always include a brief inline caption — "Figure N — Author et al. YEAR". It takes one line, respects the source, and keeps the viewer oriented.
-
-**Treat figures as first-class scene elements,** not last-minute decoration: plan which paper figure lives in which scene in your `plan_<topic>.md`, then build the narration around the figure reveal with its own `{FIG_N}` cue marker.
+Treat figures as first-class scene elements: assign a `{FIG_N}` cue marker per figure reveal in narration.
 
 ### Step 2: Plan the Video Series
 Write a plan to `video_sources/plan_<topic>.md`.
@@ -303,48 +222,15 @@ Rules:
 
 5. **Keep the equation on screen throughout.** It lives in one place and transforms. The viewer watches one object evolve, not a slideshow.
 
-**3b1b scene design rules (follow these for authentic style):**
+**3b1b scene design rules:**
 
-**Pacing:**
-- `self.wait()` (1s) after every `self.play()`. Let the viewer absorb. Longer pauses (`wait(2)`) for complex ideas. Don't rush.
-
-**Layout:**
-- Titles `to_edge(UP)`, main equations centered, diagrams center or lower region.
-- **Corner parking**: after deriving a result, shrink it and send to `to_corner(UL)` to keep it visible while building the next idea. Do this constantly for key equations.
-- **Overflow protection**: call `.set_max_width(config.frame_width - 1)` on every wide equation to auto-shrink instead of overflowing.
-- **Split screen**: use `Line(UP, DOWN).set_height(config.frame_height)` to divide screen when comparing two views side by side.
-
-**Font sizes:**
-- Hero equations 48-72, body math 42-48 (default), labels/notes 24-36. Much larger than typical.
-
-**Minimal text:**
-- Almost never full sentences on screen. Key terms and equations only. The narration carries the explanation, not the screen text.
-
-**Focus/defocus (3b1b's #1 attention technique):**
-- Don't highlight the focus — **dim everything else**: `self.play(*[m.animate.set_fill(opacity=0.35) for m in others])`
-- Restore with `set_fill(opacity=1)`. This is how 3b1b directs the viewer's eye.
-- Use `Circumscribe(mobject)` for quick emphasis bursts.
-
-**Color:**
-- Use `tex_to_color_map` for automatic semantic coloring — but **beware short keys**: `"x"` will match the `x` inside `\max`, `\text`, etc. and corrupt the LaTeX. Only use it for unique multi-char strings. For single-letter variables, use manual `eq[i].set_color()` instead:
-  ```python
-  # SAFE — unique strings
-  eq = MathTex(..., tex_to_color_map={r"\geq": ACCENT, r"\mathbb{E}": GOLD})
-  
-  # DANGEROUS — "x" matches inside \max, \text{}, etc.
-  eq = MathTex(..., tex_to_color_map={"x": TEAL})  # DON'T — breaks LaTeX
-  eq[2].set_color(TEAL)  # DO — manual by index
-  ```
-- Key palette: BLUE `#58C4DD`, YELLOW `#FFFF00`, TEAL `#5CD0B3`, RED `#FC6255`, PINK `#D147BD`, GREEN `#83C167`.
-- **Color gradients** for related items: `color_gradient([TEAL, RED], 5)` for sequences like x, x', x''.
-
-**Animation patterns:**
-- **Sequential reveals**: `LaggedStartMap(FadeIn, group, shift=0.5*UP, lag_ratio=0.3)` — items appear one by one drifting upward. Never reveal a group all at once.
-- **Curved conceptual arrows**: `Arrow(start, end, path_arc=-60*DEGREES)` — never straight.
-- **`FadeTransform(A, B)`** — smoother than `ReplacementTransform` when morphing between different object types (diagram → equation). Cross-fades while morphing shape.
-- **`.space_out_submobjects(1.5)`** — spreads equation terms apart for emphasis, like zooming into the structure.
-- **Progressive curve drawing**: `pointwise_become_partial` with time-based updater for tracing graphs.
-- **Colored region backgrounds**: semi-transparent rectangles behind grouped items to visually associate them.
+- **Pacing:** `self.wait(1)` after every `self.play()`; `wait(2)` for complex ideas. Don't rush.
+- **Layout:** titles `to_edge(UP)`, equations centered, diagrams center/lower. **Corner-park** derived results with `to_corner(UL)` to keep them visible while building the next idea. Guard wide equations with `.set_max_width(config.frame_width - 1)`. Split-screen compare with `Line(UP, DOWN).set_height(config.frame_height)`.
+- **Font sizes:** hero 48–72, body math 42–48, labels 24–36 — much larger than typical.
+- **Minimal on-screen text:** narration carries the explanation; the screen shows key terms and equations only.
+- **Focus = dim everything else** (3b1b's #1 technique): `self.play(*[m.animate.set_fill(opacity=0.35) for m in others])`, restore with `set_fill(opacity=1)`. `Circumscribe(m)` for quick emphasis bursts.
+- **Color:** `tex_to_color_map` works for **unique multi-char strings only** — `"x"` matches inside `\max`, `\text{}` and corrupts LaTeX. Use manual `eq[i].set_color()` for single letters. Palette: BLUE `#58C4DD`, YELLOW `#FFFF00`, TEAL `#5CD0B3`, RED `#FC6255`, PINK `#D147BD`, GREEN `#83C167`. Use `color_gradient([TEAL, RED], 5)` for sequences like x, x', x''.
+- **Animation patterns:** sequential reveals via `LaggedStartMap(FadeIn, group, shift=0.5*UP, lag_ratio=0.3)` (never all-at-once); curved conceptual arrows (`Arrow(..., path_arc=-60*DEGREES)`); `FadeTransform(A, B)` for cross-type morphs (diagram → equation); `.space_out_submobjects(1.5)` to emphasize equation structure; semi-transparent rect backgrounds to group related items; `pointwise_become_partial` for progressive curve drawing.
 
 Example for a derivation:
 ```python
@@ -374,14 +260,9 @@ DURATIONS_FILE = Path(__file__).resolve().parents[1] / "audio" / "video{N}" / "d
 seg_dur, cue_t, until, sync, fill = make_sync_helpers(DURATIONS_FILE)
 ```
 
-This gives you:
-- `CText()` — kerning-fixed Text (renders at 8x size, scales down). **Always use instead of `Text()`.**
-- `MathTex` — for equations (uses LaTeX, no kerning issues)
-- `BG`, `ACCENT`, `GOLD`, `TEAL`, `SOFT_WHITE`, `DIMMED` — standard colors
-- `seg_dur()`, `cue_t()`, `until()`, `sync()`, `fill()` — audio sync helpers
-- CMU Serif font (strongly recommended — falls back to system default if not installed)
+This gives you `CText()` (kerning-fixed Text — **always use instead of `Text()`**), `MathTex` for equations, colors (`BG ACCENT GOLD TEAL SOFT_WHITE DIMMED`), and sync helpers (`seg_dur cue_t until sync fill`). CMU Serif is auto-used if installed.
 
-**Why `CText()` not `Text()`:** Manim's Pango renderer has broken kerning at small font sizes — uneven letter spacing. `CText` renders at 8x size then scales down, fixing it. Known issue: [manim #2844](https://github.com/ManimCommunity/manim/issues/2844).
+`CText()` exists because Manim's Pango renderer has broken kerning at small font sizes ([#2844](https://github.com/ManimCommunity/manim/issues/2844)); it renders at 8× then scales down.
 
 **Audio-video sync — the cue system:**
 
@@ -421,12 +302,12 @@ class Scene1_Example(Scene):
 Overlapping text is the #1 quality problem. **Every scene must pass the validator with 0 issues. Do NOT render until the validator reports 0 issues.** Intentional visual effects (like crossing out an equation) do not justify skipping validation — restructure the scene to avoid triggering the validator, or use visual approaches that don't generate false positives (e.g. fade the equation to low opacity, then show the replacement, rather than overlaying a Cross on top).
 
 - **`FadeOut(Group(*self.mobjects))` between EVERY concept change** — within AND between segments. Never accumulate unrelated elements.
-- **For derivation scenes**: use `TransformMatchingTex` to morph equations in place. Do NOT stack equations vertically hoping they fit.
-- **FadeOut before FadeIn** when reusing the same screen position (except for `TransformMatchingTex` which handles this automatically)
-- **Text inside containers**: `CText()` width can be surprising. Circle radius ≥ 1.1 for single words. RoundedRectangle needs 0.4+ padding.
-- **Never route arrows through text** — use `.get_top()`, `.get_bottom()`, `.get_left()`, `.get_right()` for arrow endpoints
-- **Safe bounds**: x in [-6.5, 6.5], y in [-3.5, 3.5]. Reserve y > 3.0 for titles only.
-- **Min font_size=24** for CText
+- **Derivation scenes**: morph in place with per-submobject `ReplacementTransform` (see Step 3). Don't stack equations vertically.
+- **FadeOut before FadeIn** when reusing the same screen position.
+- **Containers:** circle radius ≥ 1.1 for single words; RoundedRectangle ≥ 0.4 padding. `CText()` width can be surprising.
+- **Arrow endpoints:** `.get_top()/.get_bottom()/.get_left()/.get_right()` — never route through text.
+- **Safe bounds:** x ∈ [-6.5, 6.5], y ∈ [-3.5, 3.5]. Reserve y > 3.0 for titles.
+- **Min font_size = 24** for CText.
 
 #### 4b. Validation (MANDATORY — never skip)
 
@@ -460,55 +341,31 @@ python video_utils/validate_scenes.py video_sources/src/video{N}.py --screenshot
 
 #### 4c. TTS Generation
 
-**Ask the user which TTS backend they want before generating audio.** If they have no preference, use Edge-TTS (free, zero config).
+Backend was chosen in Step 2a. All four live in `video_utils/` and produce `durations.json` with sentence timing + cue timestamps.
 
-Four backends, all in `video_utils/`:
-
-| Backend | Quality | Cost | Extra install | File |
-|---------|---------|------|--------------|------|
-| **Edge-TTS** (default) | Good | Free | None | `tts_edge.py` |
-| **MiniMax** | Best | ~$0.04/min | `pip install httpx python-dotenv` + API key | `tts_minimax.py` |
-| **Chatterbox** | Good + voice cloning | Free | NVIDIA GPU + `pip install chatterbox-tts faster-whisper` | `tts_local.py` |
-| **OpenAI TTS** | Good | ~$0.06/min | `pip install openai` + API key | `tts_openai.py` |
+| Backend | Quality | Cost | Extra install | Module |
+|---------|---------|------|--------------|--------|
+| **Edge-TTS** (default) | Good | Free | None | `tts_edge` |
+| **MiniMax** | Best | ~$0.04/min | `httpx python-dotenv` + `MINIMAX_API_KEY` | `tts_minimax` |
+| **Chatterbox** | Good + voice clone | Free | NVIDIA GPU + `chatterbox-tts faster-whisper` | `tts_local` |
+| **OpenAI** | Good | ~$0.06/min | `openai` + `OPENAI_API_KEY` | `tts_openai` |
 
 ```python
-# Edge-TTS (default — free, no API key):
-from video_utils.tts_edge import generate_and_save
-timing = generate_and_save(SCENES, AUDIO_DIR, voice="en-US-GuyNeural")
-
-# MiniMax (best quality, requires MINIMAX_API_KEY in .env):
-from video_utils.tts_minimax import generate_and_save
-timing = generate_and_save(SCENES, AUDIO_DIR, voice="English_expressive_narrator")
-
-# Chatterbox (local, voice cloning, requires NVIDIA GPU):
-from video_utils.tts_local import generate_and_save
-timing = generate_and_save(SCENES, AUDIO_DIR, voice_ref="path/to/reference.wav")
+from video_utils.tts_edge     import generate_and_save  # voice="en-US-GuyNeural"
+from video_utils.tts_minimax  import generate_and_save  # voice="English_expressive_narrator"
+from video_utils.tts_local    import generate_and_save  # voice_ref="reference.wav"
+timing = generate_and_save(SCENES, AUDIO_DIR, voice=...)
 ```
-
-All produce `durations.json` with sentence timing + cue timestamps.
 
 #### 4d. Rendering
 
-**Ask the user what resolution they want before rendering.** Default to 1080p 24fps if they have no preference.
+Resolution/fps were confirmed in the Checkpoint. Manim quality flags: `-ql` 480p (preview) · `-qm` 720p · `-qh` 1080p (default) · `-qp` 1440p.
 
-| Flag | Resolution | Use case |
-|------|-----------|----------|
-| `-ql` | 480p | Fast preview / iteration |
-| `-qm` | 720p | Draft review |
-| `-qh` | 1080p (default) | Final output |
-| `-qp` | 1440p | High-quality upload |
-
-**Default (CPU)** — works on all platforms:
 ```bash
 python -m manim render -qh --fps 24 --disable_caching video_sources/src/video{N}.py SceneName
 ```
 
-**Optional speedup — parallel rendering** (create `fast_render.py` in project):
-```python
-from fast_render import parallel_render
-parallel_render(MANIM_FILE, SCENE_ORDER, quality="-qh", fps=24)
-```
-Parallel rendering splits scenes across CPU cores. GPU (NVENC) encoding is optional but provides minimal speedup — the bottleneck is frame generation, not encoding.
+**Speedup:** parallel rendering across CPU cores via a project-local `fast_render.py` (`parallel_render(MANIM_FILE, SCENE_ORDER, quality="-qh", fps=24)`). GPU (NVENC) encoding barely helps — the bottleneck is frame generation, not encoding.
 
 #### 4e. Composition
 ```bash
@@ -521,44 +378,20 @@ ffmpeg -y -f concat -safe 0 -i list.txt -c copy final.mp4
 
 #### 4f. Captions (SRT)
 
-Our TTS pipeline already has exact sentence timing in `durations.json`. Generate SRT captions from it — no extra alignment needed:
+`durations.json` already has exact per-sentence timing — no forced alignment needed:
 
 ```python
-def srt_time(seconds):
-    h, m = int(seconds // 3600), int((seconds % 3600) // 60)
-    s, ms = int(seconds % 60), int((seconds % 1) * 1000)
-    return f"{h:02d}:{m:02d}:{s:02d},{ms:03d}"
-
-def generate_srt(durations_json, output_srt):
-    timing = json.load(open(durations_json))
-    idx, cumulative = 1, 0.0
-    with open(output_srt, "w") as f:
-        for key, scene_data in timing.items():
-            if not isinstance(scene_data, dict) or "segments" not in scene_data:
-                continue
-            seg_offset = 0.0
-            for seg in scene_data["segments"].values():
-                for sent in seg.get("sentences", []):
-                    t0 = cumulative + seg_offset + sent["start"]
-                    t1 = cumulative + seg_offset + sent["end"]
-                    f.write(f"{idx}\n{srt_time(t0)} --> {srt_time(t1)}\n{sent['text']}\n\n")
-                    idx += 1
-                seg_offset += seg["duration"] + 0.5
-            cumulative += scene_data.get("scene_duration", seg_offset)
+from video_utils.captions import generate_srt
+generate_srt("audio/video1/durations.json", "output/video1.srt")
 ```
 
-**Two ways to use captions:**
+**Soft subs (recommended):** ship the `.srt` next to the MP4. Players (VLC, YouTube) load it automatically and it's toggleable.
 
-1. **Soft subtitles (recommended)** — generate `.srt` file alongside each video. Players (VLC, YouTube) load it automatically. Toggleable.
-
-2. **Burned-in** — for platforms without soft sub support (Google Drive):
+**Burned-in** (for platforms without soft-sub support, e.g. Google Drive):
 ```bash
-ffmpeg -y -i video.mp4 \
-  -vf "subtitles=captions.srt:force_style='FontName=Arial,FontSize=11,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,Outline=1,BorderStyle=4,BackColour=&H80000000,MarginV=8,MarginL=60,MarginR=60'" \
-  -c:a copy output_with_captions.mp4
+ffmpeg -y -i video.mp4 -vf "subtitles=captions.srt:force_style='FontName=Arial,FontSize=11,PrimaryColour=&H00FFFFFF,OutlineColour=&H80000000,Outline=1,BorderStyle=4,BackColour=&H80000000,MarginV=8,MarginL=60,MarginR=60'" -c:a copy output_with_captions.mp4
 ```
-
-Key settings: FontSize=11 (small, non-intrusive), MarginV=8 (hugs bottom edge), semi-transparent background box.
+Key choices: small non-intrusive font, bottom-hugging margin, semi-transparent box.
 
 ### Step 5: Hand Off to User
 
@@ -586,15 +419,3 @@ After the build completes, the final captioned video is in `video_output/`. Poin
 | Safe bounds | x: [-6.5, 6.5], y: [-3.5, 3.5] |
 | Min font size | 24 for CText |
 
-## Sync Workflow Summary
-
-```
-1. WRITE narration with {CUE} markers at visual event points
-2. GENERATE TTS per-sentence → cue times estimated by character ratio → durations.json
-3. MANIM reads cue times:
-   - sync(scene, sk, "CUE", e)   → wait until cue (last resort)
-   - until(sk, "CUE", e)         → available time → use as run_time
-   - fill(scene, seg_dur, e)     → pad segment end (keep < 3s)
-4. VALIDATE: fast check (0 issues) + screenshot check (read every PNG)
-5. BUILD: TTS → render (CPU) → mux → compose
-```
